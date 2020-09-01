@@ -149,8 +149,6 @@ public class SplitAggregateConfiguration {
     @Bean
     public JdbcMessageStore messageStore() {
         JdbcMessageStore messageGroupStore = new JdbcMessageStore(dataSource);
-//        messageGroupStore.setSerializer(DataSerializer.getSerializer());
-//        messageGroupStore.setDeserializer(DataSerializer.getDeserializer());
         messageGroupStore.setTablePrefix(JdbcMessageStore.DEFAULT_TABLE_PREFIX);
         return messageGroupStore;
     }
