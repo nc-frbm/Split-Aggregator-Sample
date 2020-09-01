@@ -1,6 +1,8 @@
 package dk.example.domain;
 
-public class Event {
+import java.io.Serializable;
+
+public class Event implements Serializable {
 
     private EventType type;
     private String correlationId;

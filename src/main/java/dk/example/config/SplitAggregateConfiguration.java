@@ -24,6 +24,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+@SuppressWarnings("ALL")
 @Configuration
 @EnableIntegration
 public class SplitAggregateConfiguration {
@@ -53,7 +54,7 @@ public class SplitAggregateConfiguration {
                         } else {
                             event.setType(EventType.IOSS);
                         }
-                        event.setTotalEvents(eventList.size());
+                        event.setTotalEvents(eventList.size() * 2);
                         event.setText(event.getText() + " " + i);
                     }
                     return eventList;
@@ -140,14 +141,17 @@ public class SplitAggregateConfiguration {
     @Bean
     public LockRegistry lockRegistry() {
         DefaultLockRepository lockRepository = new DefaultLockRepository(dataSource);
-        lockRepository.setPrefix("INT_");
+        lockRepository.setPrefix(DefaultLockRepository.DEFAULT_TABLE_PREFIX);
+        lockRepository.afterPropertiesSet();
         return new JdbcLockRegistry(lockRepository);
     }
 
     @Bean
     public JdbcMessageStore messageStore() {
         JdbcMessageStore messageGroupStore = new JdbcMessageStore(dataSource);
-        messageGroupStore.setTablePrefix("INT_");
+//        messageGroupStore.setSerializer(DataSerializer.getSerializer());
+//        messageGroupStore.setDeserializer(DataSerializer.getDeserializer());
+        messageGroupStore.setTablePrefix(JdbcMessageStore.DEFAULT_TABLE_PREFIX);
         return messageGroupStore;
     }
 
