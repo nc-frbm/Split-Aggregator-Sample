@@ -10,8 +10,6 @@ import org.springframework.messaging.Message;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -19,17 +17,10 @@ import java.util.stream.IntStream;
 @EnableIntegration
 public class SplitAggregateConfiguration {
 
-    public static final String CORRELATION_ID = "x_correlationId";
-    public static final String TOTAL_REQUIRED_EVENTS = "x_totalRequiredEvents";
     public static final int SIZE = 5;
 
     @Autowired
     private EventGateway eventGateway;
-
-    @Bean
-    public AtomicInteger integerSource() {
-        return new AtomicInteger();
-    }
 
     @Bean
     public IntegrationFlow splitAggregateFlow() {
@@ -55,9 +46,9 @@ public class SplitAggregateConfiguration {
     public IntegrationFlow aggregate() {
         // Aggregating the messages
         return IntegrationFlows.from("aggregateInput")
-                .aggregate(a ->
+                .aggregate(aggregatorSpec ->
                                 // Define correlation strategy. Use correlation id from the event
-                                a.correlationStrategy(message -> {
+                                aggregatorSpec.correlationStrategy(message -> {
                                     Event event = (Event) message.getPayload();
                                     return event.correlationId;
                                 })
@@ -88,10 +79,10 @@ public class SplitAggregateConfiguration {
     public IntegrationFlow processEventFlow() {
         // Dummy flow for "processing" the event
         return IntegrationFlows.from("eventProcessInput")
-                .handle(m -> {
-                    Event e = (Event) m.getPayload();
-                    System.out.println("Handling event " + e.text);
-                    eventGateway.receive(e); // Produce event for validation reply
+                .handle(message -> {
+                    Event event = (Event) message.getPayload();
+                    System.out.println("Handling event " + event.text);
+                    eventGateway.receive(event); // Produce event for validation reply
                 }).get();
     }
 
