@@ -10,9 +10,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.config.EnableIntegration;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
+import org.springframework.integration.jdbc.lock.DefaultLockRepository;
+import org.springframework.integration.jdbc.lock.JdbcLockRegistry;
+import org.springframework.integration.jdbc.store.JdbcMessageStore;
 import org.springframework.integration.router.HeaderValueRouter;
+import org.springframework.integration.support.locks.LockRegistry;
 import org.springframework.messaging.Message;
 
+import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -25,6 +30,9 @@ public class SplitAggregateConfiguration {
 
     public static final int SIZE = 5;
     public static final String ROUTE_HEADER = "x_route";
+
+    @Autowired
+    private DataSource dataSource;
 
     @Autowired
     private EventGateway eventGateway;
@@ -56,7 +64,6 @@ public class SplitAggregateConfiguration {
                 .get();
     }
 
-
     @Bean
     public IntegrationFlow aggregate() {
         // Aggregating the messages
@@ -74,8 +81,8 @@ public class SplitAggregateConfiguration {
                                     System.out.println("Aggregation done? " + isFinished);
                                     return isFinished;
                                 })
-//                        .messageStore(messageStore()) // Here message store should be configured https://docs.spring.io/spring-integration/docs/5.3.0.M3/reference/html/jdbc.html#jdbc-message-store
-//                        .lockRegistry(lockRegistry()) // Here the lock registry should be configured https://docs.spring.io/spring-integration/docs/5.3.0.M3/reference/html/jdbc.html#jdbc-lock-registry
+                        .messageStore(messageStore()) // Here message store should be configured https://docs.spring.io/spring-integration/docs/5.3.0.M3/reference/html/jdbc.html#jdbc-message-store
+                        .lockRegistry(lockRegistry()) // Here the lock registry should be configured https://docs.spring.io/spring-integration/docs/5.3.0.M3/reference/html/jdbc.html#jdbc-lock-registry
                 )
                 .transform(Message.class, genericMessage -> {
                     Message<ArrayList<Event>> message = (Message<ArrayList<Event>>) genericMessage;
@@ -128,6 +135,20 @@ public class SplitAggregateConfiguration {
                     eventGateway.receive(event); // Produce event for validation reply
                 })
                 .get();
+    }
+
+    @Bean
+    public LockRegistry lockRegistry() {
+        DefaultLockRepository lockRepository = new DefaultLockRepository(dataSource);
+        lockRepository.setPrefix("INT_");
+        return new JdbcLockRegistry(lockRepository);
+    }
+
+    @Bean
+    public JdbcMessageStore messageStore() {
+        JdbcMessageStore messageGroupStore = new JdbcMessageStore(dataSource);
+        messageGroupStore.setTablePrefix("INT_");
+        return messageGroupStore;
     }
 
     private List<Event> createList(Event event, int size) {
