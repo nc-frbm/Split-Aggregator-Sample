@@ -10,5 +10,10 @@ public class Event {
         this.correlationId = correlationId;
         this.text = text;
     }
+
+    @Override
+    public String toString() {
+        return text;
+    }
 }
 

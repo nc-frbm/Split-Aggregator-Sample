@@ -38,7 +38,10 @@ public class SplitAggregateConfiguration {
                 // In DMS this would be multiple event types, one for each external service IOSS, Taric etc.
                 .transform(Message.class, message -> {
                     List<Event> eventList = createList((Event) message.getPayload(), SIZE);
-                    eventList.forEach(event -> event.totalEvents = eventList.size());
+                    for (int i = 0; i < eventList.size(); i++) {
+                        eventList.get(i).totalEvents = eventList.size();
+                        eventList.get(i).text += " " + i;
+                    }
                     return eventList;
                 })
                 .split()
