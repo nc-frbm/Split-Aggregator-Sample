@@ -1,5 +1,7 @@
-package dk.example;
+package dk.example.controller;
 
+import dk.example.domain.Event;
+import dk.example.gateway.EventGateway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;

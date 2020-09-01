@@ -1,5 +1,9 @@
-package dk.example;
+package dk.example.config;
 
+import dk.example.domain.AggregatedEvent;
+import dk.example.domain.Event;
+import dk.example.domain.EventType;
+import dk.example.gateway.EventGateway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,21 +39,20 @@ public class SplitAggregateConfiguration {
                     for (int i = 0; i < eventList.size(); i++) {
                         Event event = eventList.get(i);
                         if (i == 0) {
-                            event.type = EventType.TARIC_X;
+                            event.setType(EventType.TARIC_X);
                         } else if (i == 1) {
-                            event.type = EventType.TARIC_Y;
+                            event.setType(EventType.TARIC_Y);
                         } else {
-                            event.type = EventType.IOSS;
+                            event.setType(EventType.IOSS);
                         }
-                        event.totalEvents = eventList.size();
-                        event.text += " " + i;
+                        event.setTotalEvents(eventList.size());
+                        event.setText(event.getText() + " " + i);
                     }
                     return eventList;
                 })
                 .split()
-                .enrichHeaders(e -> e.headerFunction(ROUTE_HEADER, (Function<Message<Event>, Object>) message -> message.getPayload().type.name()))
+                .enrichHeaders(e -> e.headerFunction(ROUTE_HEADER, (Function<Message<Event>, Object>) message -> message.getPayload().getType().name()))
                 .route(router())
-//                .route() // Here we can route the message to different services (kafka producers)
                 .get();
     }
 
@@ -62,12 +65,12 @@ public class SplitAggregateConfiguration {
                                 // Define correlation strategy. Use correlation id from the event
                                 aggregatorSpec.correlationStrategy(message -> {
                                     Event event = (Event) message.getPayload();
-                                    return event.correlationId;
+                                    return event.getCorrelationId();
                                 })
                                 // Define release strategy. This strategy defines when we are done aggregating.
                                 .releaseStrategy(group -> {
                                     Event event = (Event)group.getOne().getPayload();
-                                    boolean isFinished = group.size() == event.totalEvents;
+                                    boolean isFinished = group.size() == event.getTotalEvents();
                                     System.out.println("Aggregation done? " + isFinished);
                                     return isFinished;
                                 })
@@ -77,12 +80,13 @@ public class SplitAggregateConfiguration {
                 .transform(Message.class, genericMessage -> {
                     Message<ArrayList<Event>> message = (Message<ArrayList<Event>>) genericMessage;
                     AggregatedEvent aggregatedEvent = new AggregatedEvent();
-                    aggregatedEvent.events = message.getPayload();
-                    aggregatedEvent.correlationId = message.getPayload().get(0).correlationId;
+                    aggregatedEvent.setEvents(message.getPayload());
+                    aggregatedEvent.setCorrelationId(message.getPayload().get(0).getCorrelationId());
                     return aggregatedEvent;
                 })
                 .handle(message -> {
-                    System.out.println("done");
+                    System.out.println("done aggregating");
+                    System.out.println(message.getPayload());
                 })
                 .get();
     }
@@ -126,24 +130,9 @@ public class SplitAggregateConfiguration {
                 .get();
     }
 
-//    @Bean
-//    public IntegrationFlow processEventFlow() {
-//        // Dummy flow for "processing" the event
-//        return IntegrationFlows.from("eventProcessInput")
-//                .handle(message -> {
-//                    Event event = (Event) message.getPayload();
-//                    System.out.println("Handling event " + event.text);
-//                    eventGateway.receive(event); // Produce event for validation reply
-//                }).get();
-//    }
-
-    private Event duplicate(Event event) {
-        return new Event(event.correlationId, event.text);
-    }
-
     private List<Event> createList(Event event, int size) {
         return IntStream.range(0, size)
-                .mapToObj(i -> duplicate(event))
+                .mapToObj(i -> event.copy())
                 .collect(Collectors.toList());
     }
 }
