@@ -2,6 +2,7 @@ package dk.example;
 
 public class Event {
 
+    public EventType type;
     public String correlationId;
     public String text;
     public int totalEvents;
@@ -13,7 +14,12 @@ public class Event {
 
     @Override
     public String toString() {
-        return text;
+        return "Event{" +
+                "type=" + type +
+                ", correlationId='" + correlationId + '\'' +
+                ", text='" + text + '\'' +
+                ", totalEvents=" + totalEvents +
+                '}';
     }
 }
 
